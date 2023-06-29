@@ -140,12 +140,12 @@ def get_mails():
     query = f'after:{number_days_ago}'
 
     # Get a list of the user's emails
-    emails = service.users().messages().list(userId='me',maxResults=4).execute()#q=query,
+    emails = service.users().messages().list(userId='me',maxResults=1).execute()#q=query,
 
     # Process and display the emails
     email_list = []
-
-
+    attachment_list=[]
+    attachment_db = db['attachments']
     email_content={}
     email_data=[]
     if 'messages' in emails:
@@ -234,11 +234,22 @@ def get_mails():
                             f.write(file_data)
                             f.close()"""
                             #print("data",file_data)
-                            email_content['attachment'] = {
+                            TEMP={}
+                            TEMP['attachment'] = {
                                 'filename': filename,
-                                'data': file_data,
+                                #'data': file_data,
                                 'attachmentID':body['attachmentId']
                             }
+                            attachment_list.append(TEMP)
+                            attachment_content={}
+                            attachment_content['filename']=filename
+                            attachment_content['data']=file_data
+                            attachment_content['attachmentID']=body['attachmentId']
+                            attachment_content['messageID']=email['id']
+                            attachment_content['emailID']=session.get("email")
+                            attachment_db.insert_one(attachment_content)
+
+            email_content["attachments"]=attachment_list
 
             if not email_content in email_data:
                 email_data.append(email_content)
@@ -252,8 +263,8 @@ def get_mails():
             db_entries["subject"]=message_subject
             db_entries["date"]=message_date
             db_entries["body"]=email_data
-            db_entries["email"] = session.get("email")
-
+            db_entries["emailID"] = session.get("email")
+            db_entries["messageID"] = email["id"]
             mail_db = db["mails"]
             mail_db.insert_one(db_entries)
 
